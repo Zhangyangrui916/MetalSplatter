@@ -65,6 +65,7 @@ public class SplatRenderer {
         }
     }
 
+    #if arch(arm64)
     struct PackedHalf3 {
         var x: Float16
         var y: Float16
@@ -77,6 +78,20 @@ public class SplatRenderer {
         var b: Float16
         var a: Float16
     }
+    #else
+    struct PackedHalf3 {
+        var x: Float
+        var y: Float
+        var z: Float
+    }
+
+    struct PackedRGBHalf4 {
+        var r: Float
+        var g: Float
+        var b: Float
+        var a: Float
+    }
+    #endif
 
     // Keep in sync with Shaders.metal : Vertex
     struct Splat {
@@ -502,10 +517,17 @@ extension SplatRenderer.Splat {
          rotation: simd_quatf) {
         let transform = simd_float3x3(rotation) * simd_float3x3(diagonal: scale)
         let cov3D = transform * transform.transpose
+        #if arch(arm64)
         self.init(position: MTLPackedFloat3Make(position.x, position.y, position.z),
                   color: SplatRenderer.PackedRGBHalf4(r: Float16(color.x), g: Float16(color.y), b: Float16(color.z), a: Float16(color.w)),
                   covA: SplatRenderer.PackedHalf3(x: Float16(cov3D[0, 0]), y: Float16(cov3D[0, 1]), z: Float16(cov3D[0, 2])),
                   covB: SplatRenderer.PackedHalf3(x: Float16(cov3D[1, 1]), y: Float16(cov3D[1, 2]), z: Float16(cov3D[2, 2])))
+        #else
+        self.init(position: MTLPackedFloat3Make(position.x, position.y, position.z),
+                  color: SplatRenderer.PackedRGBHalf4(r: Float(color.x), g: Float(color.y), b: Float(color.z), a: Float(color.w)),
+                  covA: SplatRenderer.PackedHalf3(x: Float(cov3D[0, 0]), y: Float(cov3D[0, 1]), z: Float(cov3D[0, 2])),
+                  covB: SplatRenderer.PackedHalf3(x: Float(cov3D[1, 1]), y: Float(cov3D[1, 2]), z: Float(cov3D[2, 2])))
+        #endif
     }
 }
 
